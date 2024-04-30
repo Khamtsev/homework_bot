@@ -41,15 +41,15 @@ def check_tokens() -> None:
         'TELEGRAM_TOKEN': TELEGRAM_TOKEN,
         'TELEGRAM_CHAT_ID': TELEGRAM_CHAT_ID,
     }
-    missing_tokens = []
+    is_missed = False
+
     for token in TOKENS:
         if not TOKENS[token]:
             logging.critical(f'Отсутствует токен {token}')
-            missing_tokens.append(token)
-    if missing_tokens != []:
-        missing_tokens = ', '.join(missing_tokens)
-        logging.critical(f'Отсутствуют токены {missing_tokens}')
-        sys.exit()
+            is_missed = True
+
+    if is_missed:
+        sys.exit(1)
 
 
 def send_message(bot: telegram.Bot, message: str) -> None:
@@ -75,8 +75,7 @@ def get_api_answer(timestamp: int) -> dict:
             raise ConnectionError(
                 f'Эндпоинт недоступен: {response.status_code}'
             )
-        else:
-            return response.json()
+        return response.json()
     except requests.RequestException as error:
         raise ConnectionError(f'Не удалось получить ответ: {error}')
 
@@ -126,24 +125,12 @@ def main() -> None:
                     last_status = new_status
                 else:
                     logging.debug('Обновлений статуса не было')
-        except ConnectionError as error:
-            message = f'Сбой в работе программы: {error}'
-            logging.error(message)
-            send_message(bot, message)
-        except TypeError as error:
-            message = f'Сбой в работе программы: {error}'
-            logging.error(message)
-            send_message(bot, message)
-        except KeyError as error:
-            message = f'Сбой в работе программы: {error}'
-            logging.error(message)
-            send_message(bot, message)
-        except WrongStatus as error:
+        except (ConnectionError, TypeError, KeyError, WrongStatus,) as error:
             message = f'Сбой в работе программы: {error}'
             logging.error(message)
             send_message(bot, message)
         except Exception as error:
-            message = f'Сбой в работе программы: {error}'
+            message = f'Непредвиденная ошибка: {error}'
             logging.error(message)
         finally:
             time.sleep(RETRY_PERIOD)
